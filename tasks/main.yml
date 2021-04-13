@@ -1,19 +1,16 @@
 ---
 
 - name: grafana | install grafana gpg key
-  become: true
   apt_key:
     url: https://packages.grafana.com/gpg.key
     state: present
 
 - name: grafana | add apt repository
-  become: true
   apt_repository:
     repo: deb https://packages.grafana.com/oss/deb stable main
     state: present
     
 - name: grafana | install grafana & certbot
-  become: true
   apt:
     name: "{{ item }}"
     state: present
@@ -144,6 +141,8 @@
     state: present
 
 - name: grafana | restart grafana-server to pick up changes
-            
+  systemd:
+    name: grafana-server
+    state: started          
         
       
