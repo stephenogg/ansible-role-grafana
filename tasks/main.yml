@@ -12,18 +12,138 @@
     repo: deb https://packages.grafana.com/oss/deb stable main
     state: present
     
-- name: grafana | install grafana
+- name: grafana | install grafana & certbot
   become: true
   apt:
-    name: grafana
+    name: "{{ item }}"
     state: present
     update_cache: true
+  with_items:
+    - grafana
+    - certbot
 
-- name: grafana | start and enable grafana service
-  become: true
+- name: grafana | enable grafana service but stopped so we can get a certificate
   systemd:
     name: grafana-server
-    state: started
+    state: stopped
     enabled: true
+    
+- name: grafana | create letsencrypt challenge directory
+  file:
+    path: /srv/www/letsencrypt/.well-known/
+    recurse: yes
+    state: directory
+    mode: 0755
+ 
+- name: grafana | check if certificate already exists.
+  stat:
+    path: /etc/letsencrypt/live/{{ cert_domain }}/cert.pem
+  register: letsencrypt_cert
+    
+- name: grafana | stop services to allow certbot to generate a cert.
+  service:
+    name: grafana-server
+    state: stopped
+  when: not letsencrypt_cert.stat.exists
+
+- name: grafana | generate new certificate if one doesn't exist.
+  command: "{{ certbot_create_command }}"
+  when: not letsencrypt_cert.stat.exists
+
+- name: grafana | start services after cert has been generated.
+  service:
+    name: grafana-server
+    state: started
+  when: not letsencrypt_cert.stat.exists
+  
+- name: grafana | add cron job for certbot renewal
+  template:
+    src: cron-daily-certbot-renew.j2
+    dest: /etc/cron.daily/certbot-renew
+    mode: 0755
+  when: not letsencrypt_cert.stat.exists
+
+- name: grafana | add renewal deploy hooks
+  template:
+    src: letsencrypt-renewal-hooks-deploy-commands.j2
+    dest: /etc/letsencrypt/renewal-hooks/deploy/commands.sh
+    mode: 0755
+  when: not letsencrypt_cert.stat.exists
+  
+- name: grafana | add sslcert group
+  group:
+    name: sslcerts
+    
+- name: grafana | add grafana user (created when grafana is installed) to sslcert group
+  user:
+    name: grafana
+    append: yes
+    groups: sslcerts
+
+- name: grafana | recursively change ownership of a /etc/letsencrypt
+  file:
+    path: /etc/letsencrypt
+    state: directory
+    recurse: yes
+    owner: root
+    group: sslcerts  
+
+- name: grafana | change permissions to allow grafana access to certs
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: 0755
+  with_items:
+    - /etc/letsencrypt/live
+    - /etc/letsencrypt/archive
+
+- name: grafana | edit /etc/grafana/grafana.ini change protocol to https
+  replace:
+    path: /etc/grafana/grafana.ini
+    after: '# Protocol (http, https, h2, socket)'
+    before: '# The ip address to bind to, empty will bind to all interfaces'
+    regexp: '^;(protocol = http)'
+    replace:    '\1s'           
+
+- name: grafana | edit /etc/grafana/grafana.ini change port to 443
+  replace:
+    path: /etc/grafana/grafana.ini
+    after: '# The http port  to use'
+    before: '# The public facing domain name used to access grafana from a browser'
+    regexp: '^;(port =) \d+'
+    replace:    '\1 443'      
+
+- name: grafana | edit /etc/grafana/grafana.ini change domain
+  replace:
+    path: /etc/grafana/grafana.ini
+    after: '# The public facing domain name used to access grafana from a browser'
+    before: '# Redirect to correct domain if host header does not match domain'
+    regexp: '^;(domain =) localhost'
+    replace:    '\1 206-12-94-26.cloud.computecanada.ca'  
+
+ - name: grafana | edit /etc/grafana/grafana.ini add cert location
+  replace:
+    path: /etc/grafana/grafana.ini
+    after: '# https certs & key file'
+    before: '# Unix socket path'
+    regexp: '^;(cert_file =)'
+    replace:    '\1 etc/letsencrypt/live/%(domain)/fullchain.pem'       
+
+ - name: grafana | edit /etc/grafana/grafana.ini add key location
+  replace:
+    path: /etc/grafana/grafana.ini
+    after: '# https certs & key file'
+    before: '# Unix socket path'
+    regexp: '^;(cert_key =)'
+    replace:    '\1 etc/letsencrypt/live/%(domain)/privkey.pem'   
+
+- name: grafana | allow grafana to bind to ports less than 1024
+  community.general.capabilities:
+    path: /usr/sbin/grafana-server
+    capability: cap_net_bind_service=+ep
+    state: present
+
+- name: grafana | restart grafana-server to pick up changes
+            
         
       

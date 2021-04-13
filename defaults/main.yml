@@ -8,3 +8,13 @@ certbot_create_command: >
   --agree-tos
   --email sogg@ualberta.ca
   -d {{ cert_domain }}
+  
+certbot_auto_renew_options: >
+  --quiet
+  --no-self-upgrade
+  
+certbot_auto_renew_deploy_hooks:
+  - systemctl stop grafana-server
+  - systemctl start grafana-server
+  
+cert_domain: "206-12-92-26.cloud.computecanada.ca"      
