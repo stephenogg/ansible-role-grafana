@@ -91,6 +91,13 @@
     - /etc/letsencrypt/live
     - /etc/letsencrypt/archive
 
+- name: grafana | allow sslcerts group to read privkey1.pem
+  file:
+    path: "/etc/letsencrypt/archive/{{cert_domain}}/privkey1.pem"
+    state: present
+    mode: 0640
+ 
+
 - name: grafana | edit /etc/grafana/grafana.ini change protocol to https
   replace:
     path: /etc/grafana/grafana.ini
@@ -118,8 +125,8 @@
 - name: grafana | edit /etc/grafana/grafana.ini change add https://domain
   replace:
     path: /etc/grafana/grafana.ini
-    after: '# The full public facing domain url'
-    before: '# Redirect to correct domain if host header does not match domain'
+    after: '# If you use reverse proxy'
+    before: '# Serve Grafana from subpath'
     regexp: '^;(root_url =)'
     replace:    '\1 https://{{ cert_domain }}'      
 
@@ -129,7 +136,7 @@
     after: '# https certs & key file'
     before: '# Unix socket path'
     regexp: '^;(cert_file =)'
-    replace:    '\1 etc/letsencrypt/live/{{cert_domain}}/fullchain.pem'       
+    replace:    '\1 /etc/letsencrypt/live/{{cert_domain}}/fullchain.pem'       
 
 - name: grafana | edit /etc/grafana/grafana.ini add key location
   replace:
@@ -137,7 +144,7 @@
     after: '# https certs & key file'
     before: '# Unix socket path'
     regexp: '^;(cert_key =)'
-    replace:    '\1 etc/letsencrypt/live/{{cert_domain}}/privkey.pem'   
+    replace:    '\1 /etc/letsencrypt/live/{{cert_domain}}/privkey.pem'   
 
 - name: grafana | allow grafana to bind to ports less than 1024
   community.general.capabilities:
