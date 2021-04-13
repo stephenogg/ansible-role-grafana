@@ -1,0 +1,10 @@
+---
+
+certbot_create_command: >
+  certbot
+  certonly
+  --standalone
+  --noninteractive
+  --agree-tos
+  --email sogg@ualberta.ca
+  -d {{ cert_domain }}
