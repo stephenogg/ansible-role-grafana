@@ -114,6 +114,14 @@
     before: '# Redirect to correct domain if host header does not match domain'
     regexp: '^;(domain =) localhost'
     replace:    '\1 {{ cert_domain }}'  
+    
+- name: grafana | edit /etc/grafana/grafana.ini change add https://domain
+  replace:
+    path: /etc/grafana/grafana.ini
+    after: '# The full public facing domain url'
+    before: '# Redirect to correct domain if host header does not match domain'
+    regexp: '^;(root_url =)'
+    replace:    '\1 https://{{ cert_domain }}'      
 
 - name: grafana | edit /etc/grafana/grafana.ini add cert location
   replace:
@@ -121,7 +129,7 @@
     after: '# https certs & key file'
     before: '# Unix socket path'
     regexp: '^;(cert_file =)'
-    replace:    '\1 etc/letsencrypt/live/%(domain)/fullchain.pem'       
+    replace:    '\1 etc/letsencrypt/live/{{cert_domain}}/fullchain.pem'       
 
 - name: grafana | edit /etc/grafana/grafana.ini add key location
   replace:
@@ -129,7 +137,7 @@
     after: '# https certs & key file'
     before: '# Unix socket path'
     regexp: '^;(cert_key =)'
-    replace:    '\1 etc/letsencrypt/live/%(domain)/privkey.pem'   
+    replace:    '\1 etc/letsencrypt/live/{{cert_domain}}/privkey.pem'   
 
 - name: grafana | allow grafana to bind to ports less than 1024
   community.general.capabilities:
