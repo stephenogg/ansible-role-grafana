@@ -104,7 +104,7 @@
     path: /etc/grafana/grafana.ini
     after: '# The http port'
     before: '# The public facing'
-    regexp: '^;(port =)'
+    regexp: '^;(http_port =)'
     replace:    '\1 443'      
 
 - name: grafana | edit /etc/grafana/grafana.ini change domain
