@@ -119,9 +119,9 @@
     after: '# The public facing domain name used to access grafana from a browser'
     before: '# Redirect to correct domain if host header does not match domain'
     regexp: '^;(domain =) localhost'
-    replace:    '\1 206-12-94-26.cloud.computecanada.ca'  
+    replace:    '\1 {{ cert_domain }}'  
 
- - name: grafana | edit /etc/grafana/grafana.ini add cert location
+- name: grafana | edit /etc/grafana/grafana.ini add cert location
   replace:
     path: /etc/grafana/grafana.ini
     after: '# https certs & key file'
@@ -129,7 +129,7 @@
     regexp: '^;(cert_file =)'
     replace:    '\1 etc/letsencrypt/live/%(domain)/fullchain.pem'       
 
- - name: grafana | edit /etc/grafana/grafana.ini add key location
+- name: grafana | edit /etc/grafana/grafana.ini add key location
   replace:
     path: /etc/grafana/grafana.ini
     after: '# https certs & key file'
