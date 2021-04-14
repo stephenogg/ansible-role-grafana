@@ -55,14 +55,14 @@
     src: cron-daily-certbot-renew.j2
     dest: /etc/cron.daily/certbot-renew
     mode: 0755
-  when: not letsencrypt_cert.stat.exists
+  #when: not letsencrypt_cert.stat.exists
 
 - name: grafana | add renewal deploy hooks
   template:
     src: letsencrypt-renewal-hooks-deploy-commands.j2
     dest: /etc/letsencrypt/renewal-hooks/deploy/commands.sh
     mode: 0755
-  when: not letsencrypt_cert.stat.exists
+  #when: not letsencrypt_cert.stat.exists
   
 - name: grafana | add sslcert group
   group:
