@@ -55,14 +55,14 @@
     src: cron-daily-certbot-renew.j2
     dest: /etc/cron.daily/certbot-renew
     mode: 0755
-  #when: not letsencrypt_cert.stat.exists
+  when: not letsencrypt_cert.stat.exists
 
 - name: grafana | add renewal deploy hooks
   template:
     src: letsencrypt-renewal-hooks-deploy-commands.j2
     dest: /etc/letsencrypt/renewal-hooks/deploy/commands.sh
     mode: 0755
-  #when: not letsencrypt_cert.stat.exists
+  when: not letsencrypt_cert.stat.exists
   
 - name: grafana | add sslcert group
   group:
@@ -97,54 +97,55 @@
     state: file
     mode: 0640
  
-
 - name: grafana | edit /etc/grafana/grafana.ini change protocol to https
-  replace:
+  lineinfile:
     path: /etc/grafana/grafana.ini
-    after: '# Protocol'
-    before: '# The ip address to bind to'
-    regexp: '^;(protocol = http)'
-    replace:    '\1s'           
+    backrefs: true
+    regexp: '(protocol = http)'
+    line:   '\1s' 
+    state: present
+               
 
 - name: grafana | edit /etc/grafana/grafana.ini change port to 443
-  replace:
+  lineinfile:
     path: /etc/grafana/grafana.ini
-    after: '# The http port'
-    before: '# The public facing'
-    regexp: '^;(http_port =)'
-    replace:    '\1 443'      
+    backrefs: true
+    regexp: '(http_port =)'
+    line:    '\1 443' 
+    state: present     
 
 - name: grafana | edit /etc/grafana/grafana.ini change domain
-  replace:
+  lineinfile:
     path: /etc/grafana/grafana.ini
-    after: '# The public facing domain name used to access grafana from a browser'
-    before: '# Redirect to correct domain if host header does not match domain'
-    regexp: '^;(domain =) localhost'
-    replace:    '\1 {{ cert_domain }}'  
-    
+    backrefs: true
+    regexp: '(domain =) \w{9,}'
+    line:    '\1 {{ cert_domain }}'
+    state: present
+
 - name: grafana | edit /etc/grafana/grafana.ini change add https://domain
-  replace:
+  lineinfile:
     path: /etc/grafana/grafana.ini
-    after: '# If you use reverse proxy'
-    before: '# Serve Grafana from subpath'
-    regexp: '^;(root_url =)'
-    replace:    '\1 https://{{ cert_domain }}'      
+    backrefs: true
+    regexp: '(root_url =)'
+    line:    '\1 https://{{ cert_domain }}'
+    state: present
 
 - name: grafana | edit /etc/grafana/grafana.ini add cert location
-  replace:
+  lineinfile:
     path: /etc/grafana/grafana.ini
-    after: '# https certs & key file'
-    before: '# Unix socket path'
-    regexp: '^;(cert_file =)'
-    replace:    '\1 /etc/letsencrypt/live/{{cert_domain}}/fullchain.pem'       
+    insertbefore: '^;cert_file'
+    firstmatch: yes
+    line: 'cert_file = /etc/letsencrypt/live/{{cert_domain}}/fullchain.pem'
+    state: present       
 
 - name: grafana | edit /etc/grafana/grafana.ini add key location
-  replace:
+  lineinfile:
     path: /etc/grafana/grafana.ini
-    after: '# https certs & key file'
-    before: '# Unix socket path'
-    regexp: '^;(cert_key =)'
-    replace:    '\1 /etc/letsencrypt/live/{{cert_domain}}/privkey.pem'   
+    backrefs: true
+    regexp: '(cert_key =)'
+    line: '\1 /etc/letsencrypt/live/{{cert_domain}}/privkey.pem'
+    state: present  
+
 
 - name: grafana | allow grafana to bind to ports less than 1024
   community.general.capabilities:
